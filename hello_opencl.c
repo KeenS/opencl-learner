@@ -1,6 +1,7 @@
+#define CL_TARGET_OPENCL_VERSION 110
+
 #include <CL/cl.h>
 #include <stdio.h>
-
 #define NWITEMS 512
 // A simple memset kernel
 const char *source =
