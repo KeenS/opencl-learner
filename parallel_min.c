@@ -26,7 +26,7 @@ main()
   const char *kernel_source;
   {
     struct stat stat_buf;
-    const char *source_path = "./parallel_min.clc";
+    const char *source_path = "./parallel_min.cl";
     char * buf;
     size_t size;
     int fd;
