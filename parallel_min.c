@@ -4,76 +4,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #define NDEVS 1
 
 // A parallel min() kernel that works well on CPU and GPU
 
-const char *kernel_source =
-"#pragma OPENCL EXTENSION cl_khr_local_int32_extended_atmics : enable\n"
-"#pragma OPENCL EXTENSION cl_khr_global_int32_extended_atmics : enable\n"
-"\n"
-"// 9. The source buffer is accessed as 4-vectors.\n"
-"__kernel void minp(\n"
-"                   __global uint4 *src,\n"
-"                   __global uint *gmin,\n"
-"                   __local uint *lmin,\n"
-"                   __global uint *dbg,\n"
-"                   int nitems,"
-"                   uint dev\n"
-")\n"
-"{\n"
-"  // 10. Set up global memory access pattern.\n"
-"  uint count = (nitems / 4) / get_global_size(0);\n"
-"  uint idx = (dev == 0) ? get_global_id(0) * count\n"
-"                        : get_global_id(0);\n"
-"  uint stride = (dev == 0) ? 1  : get_global_size(0);\n"
-"  uint pmin = (uint) -1;\n"
-"\n"
-"  // 11. First, compute private min, for this work-item.\n"
-"  for(int n = 0; n < count; n++, idx += stride)\n"
-"  {\n"
-"    pmin = min(pmin, src[idx].x);\n"
-"    pmin = min(pmin, src[idx].y);\n"
-"    pmin = min(pmin, src[idx].z);\n"
-"    pmin = min(pmin, src[idx].w);\n"
-"  }\n"
-"\n"
-"  // 12. Reduce min values inside work-group.\n"
-"  if(get_local_id(0) == 0)\n"
-"    lmin[0] = (uint) -1;\n"
-"  barrier(CLK_LOCAL_MEM_FENCE);\n"
-"  (void) atom_min(lmin, pmin);\n"
-"  barrier(CLK_LOCAL_MEM_FENCE);\n"
-"  // Write out to __global.\n"
-"  if(get_local_id(0) == 0)\n"
-"    gmin[get_group_id(0)] = lmin[0];\n"
-"  // Dump some debug info\n"
-"  if(get_global_id(0) == 0) {\n"
-"    dbg[0] = get_num_groups(0);\n"
-"    dbg[1] = get_global_size(0);\n"
-"    dbg[2] = count;\n"
-"    dbg[3] = stride;\n"
-"  }\n"
-"}\n"
-"\n"
-"// 13. Reduce work-group min values from __global to __global.\n"
-"kernel void reduce(\n"
-"                   __global uint4 *src,\n"
-"                   __global uint *gmin)\n"
-"{\n"
-"  (void) atom_min(gmin, gmin[get_global_id(0)]);\n"
-"}\n";
-
 int
-main(int argc, char **argv)
+main()
 {
   cl_platform_id  platform;
-  int nw;
   cl_device_type devs[NDEVS] = {  CL_DEVICE_TYPE_GPU };
 
   cl_uint *src_ptr;
   unsigned int num_src_items = 4096*4096;
+
+  // load source file
+  const char *kernel_source;
+  {
+    struct stat stat_buf;
+    const char *source_path = "./parallel_min.clc";
+    char * buf;
+    if(stat(source_path, &stat_buf) == -1) {
+      printf("stat\n");
+      return -1;
+    };
+    size_t size = stat_buf.st_size;
+    buf = (char *)malloc(size);
+    int fd = open(source_path, O_RDONLY);
+    if(read(fd, buf, size) == -1) {
+      printf("read\n");
+      return -1;
+    }
+    kernel_source = buf;
+  }
 
   // 1. quick & dirty MWC random init of source buffer.
   // Random seed (portable).
