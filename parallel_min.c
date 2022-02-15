@@ -133,7 +133,7 @@ main()
     cl_int ret = clBuildProgram(program,
                                 1,
                                 &device,
-                                "-save-temps",
+                                "-cl-std=CL2.0",
                                 NULL,
                                 NULL);
     // 5. Print compiler error messages
