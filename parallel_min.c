@@ -28,13 +28,15 @@ main()
     struct stat stat_buf;
     const char *source_path = "./parallel_min.clc";
     char * buf;
+    size_t size;
+    int fd;
     if(stat(source_path, &stat_buf) == -1) {
       printf("stat\n");
       return -1;
     };
-    size_t size = stat_buf.st_size;
+    size = stat_buf.st_size;
     buf = (char *)malloc(size);
-    int fd = open(source_path, O_RDONLY);
+    fd = open(source_path, O_RDONLY);
     if(read(fd, buf, size) == -1) {
       printf("read\n");
       return -1;
