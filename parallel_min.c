@@ -184,10 +184,12 @@ main(int argc, char **argv)
     minp   = clCreateKernel(program, "minp", &ret);
     if(ret != CL_SUCCESS) {
       printf("minp kernel: %d\n", ret);
+      return -1;
     }
     reduce = clCreateKernel(program, "reduce", &ret);
     if(ret != CL_SUCCESS) {
       printf("reduce kernel: %d\n", ret);
+      return -1;
     }
     // Create input, output and debug buffer.
     src_buf = clCreateBuffer(context,
@@ -197,6 +199,7 @@ main(int argc, char **argv)
                              &ret);
     if(ret != CL_SUCCESS) {
       printf("create src buffer: %d\n", ret);
+      return -1;
     }
     dst_buf = clCreateBuffer(context,
                              CL_MEM_READ_WRITE,
@@ -205,6 +208,7 @@ main(int argc, char **argv)
                              &ret);
     if(ret != CL_SUCCESS) {
       printf("create dst buffer: %d\n", ret);
+      return -1;
     }
     dbg_buf = clCreateBuffer(context,
                              CL_MEM_WRITE_ONLY,
@@ -213,6 +217,7 @@ main(int argc, char **argv)
                              &ret);
     if(ret != CL_SUCCESS) {
       printf("create dbg buffer: %d\n", ret);
+      return -1;
     }
     clSetKernelArg(minp, 0, sizeof(void *),        (void *) &src_buf);
     clSetKernelArg(minp, 1, sizeof(void *),        (void *) &dst_buf);
@@ -224,6 +229,8 @@ main(int argc, char **argv)
     clSetKernelArg(reduce, 0, sizeof(void *), (void *) &src_buf);
     clSetKernelArg(reduce, 1, sizeof(void *), (void *) &dst_buf);
 
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
     /* CPerfCounter t; */
     /* t.Reset(); */
     /* t.Start(); */
@@ -267,9 +274,11 @@ main(int argc, char **argv)
       printf("finish %d\n", ret);
       return -1;
     }
-    /* t.Stop(); */
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double elapsed = ((1.0e9 * (double)(end.tv_sec - start.tv_sec)) + (double)(end.tv_nsec - start.tv_nsec)) / 1e9;
 
-    /* printf("B/W %.2f GB/sec, ", ((float) num_src_items * sizeof(cl_uint) * NLOOPS) / t.GetElapsedTime() / 1e9); */
+    printf("B/W %.2f GB/sec, ", ((float) num_src_items * sizeof(cl_uint) * NLOOPS) / elapsed / 1e9);
 
     // 7. Look at the results via synchronous buffer map.
     dst_ptr = (cl_uint *) clEnqueueMapBuffer(queue,
